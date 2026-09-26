@@ -1,0 +1,67 @@
+# 허들링 디자인 하네스 — 기본값
+# 사용자가 따로 정하지 않았을 때 에이전트가 쓰는 값이다. 값을 바꾸면 다음 실행부터 적용된다.
+# 게이트가 검사하는 수치(색·타이포·간격·모서리·화면 골격)는 여기 없고 harness/rules.yaml(SSOT)에 있다.
+#
+# source 표시
+#   template  = Figma 템플릿 mPDVfKe7KWzEJTk4QwxmmB node 29:68 "B · 작업 데스크" 에서 확인한 값
+#   design.md = design.md 에 적힌 값
+#   prd       = prd.md 에 적힌 값
+#   임의      = 템플릿·문서에 없어서 하네스가 정한 값 ← 사용자가 확인·수정할 대상
+
+figma:
+  pages:
+    p3: { value: "P3 · {주제} · 시안", source: 임의 }
+    p4: { value: "P4 · {주제} · 완성본", source: 임의 }
+  frame_name: { value: "{시안 문자} · {화면명}", source: template } # 예: B · 작업 데스크
+  frame_gap_x: { value: 80, source: 임의 } # 시안 프레임을 가로로 나란히 둘 때 간격
+  layer_prefix: { value: "{시안 문자 소문자}.", source: template } # 예: b.header (접두사=시안 문자는 추정 → 임의 확정)
+
+screen:
+  status_bar_component:
+    { value: "Status bar - iPhone 17 Pro", source: template }
+  status_bar_time: { value: "9:41", source: template }
+  header:
+    left: { value: 로고, source: template } # 로고 115×15 SVG
+    right: { value: 알림 벨 버튼 44×44, source: template }
+  scroll_height: { value: 630, source: 임의 } # 118~748. 템플릿은 648로 탭바와 18px 겹침 → 보정
+  tabs:
+    required: { value: true, source: 임의 } # 템플릿은 1화면뿐이라 필수 여부 미확인
+    count: { value: 4, source: template } # 탭 1개 = 97.5×56, 아이콘 20 + 라벨, 세로 gap 4
+    labels: { value: "홈 · 자료실 · 내 학습 · 내 자산", source: 임의 } # 2026-09-26 사용자 확정. 자료실 = 무료 학습자료 + 멤버 자료실 + 스킬 라이브러리
+    active_color: { value: "#141414 (ink)", source: design.md } # 템플릿은 파란색 → design.md 우선
+    inactive_color: { value: "#707070 (text-muted)", source: design.md }
+  home_indicator: { value: "132×5 막대, x129 y20, pill, ink", source: template }
+  section_gap: { value: 16, source: template } # 본문 섹션 사이 (space-section)
+  card_padding: { value: 16, source: template } # space-stack
+  list_gap: { value: 8, source: template } # space-inline
+  inline_gap_xs: { value: 4, source: template } # 아이콘+라벨 등
+
+components:
+  cta:
+    placement: { value: 카드 안 인라인, source: template } # 하단 고정 CTA 아님
+    height: { value: 48, source: template }
+    width: { value: 가득 채움 (본문 358 - 카드 padding), source: template }
+    shape: { value: pill, source: design.md } # 템플릿은 radius 12 → design.md 우선
+    fill: { value: "#141414 (primary)", source: design.md } # 템플릿은 파란색 CTA → design.md 우선
+    label: { value: "15/600 #ffffff", source: design.md }
+  card:
+    radius: { value: 24, source: design.md } # rounded.md. 템플릿은 12
+    fill: { value: "#f3f3f3 (canvas-soft)", source: design.md }
+    border: { value: 없음, source: design.md }
+  divider: {
+      value: "1px 높이 fill 프레임, #e0e0e0 (hairline)",
+      source: template,
+    } # 그리는 방식=template, 색=design.md
+  icon_size: { value: "헤더 18 · 탭 20", source: template }
+  status_label: {
+      value: "caption 12/400, 흑백 단계로만 구분",
+      source: design.md,
+    } # 템플릿의 초록·주황 상태색은 쓰지 않음
+
+content:
+  locale: { value: ko-KR, source: prd }
+  dummy_text: {
+      value: "허들링 서비스 맥락의 한국어 문장. 실명·실제 회사명·연락처 금지",
+      source: prd,
+    } # ★ 어기면 안 되는 것 2
+  dates: { value: "M.DD 형식 (예: 9.30 마감 · D-12)", source: template }

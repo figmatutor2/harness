@@ -1,0 +1,155 @@
+# 허들링 디자인 하네스 — 규칙 SSOT
+# 검증 스크립트(harness/scripts/verify.mjs)는 이 파일만 기준으로 판정한다.
+# design.md / story-service.md 는 사람이 읽는 설명 문서이며,
+# 그 문서의 수치를 바꾸면 이 파일도 함께 고쳐야 한다.
+
+version: 1
+
+# ─────────────────────────────────────────────
+# 실행 공통
+# ─────────────────────────────────────────────
+run:
+  runs_dir: runs
+  max_attempts: 3 # 같은 게이트 연속 실패 한도 → 도달 시 blocked, 사람에게 보고
+  placeholder_pattern: "\\{\\{[^}]*\\}\\}" # 템플릿 미작성 표시. 남아 있으면 실패
+  figma_url_pattern: "^https://(www\\.)?figma\\.com/(design|file)/[A-Za-z0-9]+"
+
+# 게이트 순서와 실패 시 복귀 경로 (R2·R4 확정)
+gates:
+  order: [p1, p2, p3, p3-approval, p4]
+  return_to:
+    p1: p1
+    p2: p2 # 기본
+    p2_needs_research: p1 # p2-spec/needs-research.md 가 있으면 P1로
+    p3: p3
+    p3-approval: p2 # 내부 컨펌 반려
+    p4: p4
+
+# ─────────────────────────────────────────────
+# Phase별 필수 파일과 통과 조건
+# ─────────────────────────────────────────────
+p1:
+  dir: p1-research
+  files: [references.md, analysis.md]
+  min_references: 5
+  reference_heading: "^###\\s+R(\\d+)\\b" # ### R1. 앱명 — 화면
+  reference_url_pattern: "https?://(www\\.)?uibowl\\.io/\\S+"
+  min_points: 3
+  point_heading: "^###\\s+RP-(\\d+)\\b" # ### RP-1. 반영 포인트
+  point_source_pattern: "출처\\s*[:：].*?\\bR(\\d+)\\b"
+
+p2:
+  dir: p2-spec
+  files: [screen-spec.md]
+  needs_research_file: needs-research.md
+  required_sections: [목적, 연결 유저스토리, 화면 구성, 상태, 데이터 필드]
+  story_id_pattern: "\\bUS-(\\d+)\\b"
+  story_id_range: [1, 5] # story-service.md 유저스토리 번호
+  excluded_keywords: [구매, 피드백, 허들링 픽, 판매 수익, 정산, 결제] # MVP 범위 제외
+
+  # ★ 어기면 안 되는 것 1 — 멤버 자료는 기본 비공개
+  visibility:
+    trigger_keywords: [공개 범위, visibility]
+    required_default_pattern: "기본값\\s*[:：]\\s*비공개"
+    forbidden_default_pattern: "기본값\\s*[:：]\\s*(멤버 공개|판매 신청|공개)"
+
+  # ★ 어기면 안 되는 것 2 — 판매 자산은 운영자 검수를 통과해야 한다
+  sale_review:
+    trigger_keywords: [판매 신청, sale_requested]
+    required_state_keywords: [검수 대기]
+    forbidden_transition_pattern: "판매 신청\\s*(→|->)\\s*(판매 중|승인됨)"
+
+p3:
+  dir: p3-concept
+  files: [concepts.md, concepts-export.json]
+  concept_heading: "^###\\s+시안\\s*([A-Z])\\b" # ### 시안 A
+  min_concepts: 2
+  max_concepts: 3
+  node_id_pattern: "(\\d+[:-]\\d+)"
+
+p3-approval:
+  dir: p3-concept
+  files: [approval.md]
+  result_pattern: "결과\\s*[:：]\\s*(승인|반려)"
+  selected_pattern: "선택 시안\\s*[:：]\\s*시안\\s*([A-Z])"
+  approver_pattern: "승인자\\s*[:：]\\s*(\\S.*)"
+  date_pattern: "날짜\\s*[:：]\\s*(\\d{4}-\\d{2}-\\d{2})"
+
+p4:
+  dir: p4-build
+  files: [build.md, figma-export.json]
+  report_file: verify-report.md
+
+# ─────────────────────────────────────────────
+# 디자인 기준 (design.md 에서 옮겨 온 수치)
+# ─────────────────────────────────────────────
+design:
+  frame: { width: 390, height: 844 }
+  allowed_fonts: [Pretendard, Pretendard Variable]
+  # SOLID fill/stroke만 검사한다. 이미지 fill(콘텐츠)은 검사하지 않는다.
+  colors:
+    primary: "#141414"
+    ink: "#141414"
+    ink-soft: "#262626"
+    accent: "#0066ff"
+    canvas: "#ffffff"
+    on-primary: "#ffffff" # design.md 에 hex 미정의 — canvas 와 같은 흰색으로 가정
+    canvas-soft: "#f3f3f3"
+    field: "#f0f0f0"
+    hairline-soft: "#f0f0f0"
+    hairline: "#e0e0e0"
+    text-muted: "#707070"
+    text-faint: "#adadad"
+  # auto layout 의 itemSpacing / padding 에 허용되는 값(px)
+  spacing: [0, 4, 8, 12, 16, 24, 32, 48, 64]
+  forbidden_effects: [DROP_SHADOW, INNER_SHADOW] # design.md: 그림자 없는 깊이 표현
+  # design.md Hierarchy 표의 [글자 크기, 굵기] 조합만 허용
+  typography:
+    - [32, 700] # display
+    - [28, 700] # heading-1
+    - [24, 700] # heading-2
+    - [20, 700] # heading-3
+    - [18, 700] # heading-4
+    - [17, 600] # title
+    - [17, 300] # body-lg
+    - [15, 400] # body
+    - [15, 600] # link / 버튼 라벨
+    - [13, 400] # body-sm
+    - [12, 600] # label
+    - [12, 400] # caption
+  forbidden_weights: [500] # 템플릿은 Medium 500을 쓰지만 design.md 우선
+  radius: [0, 16, 24, 9999] # design.md rounded.none / sm / md / full
+
+# ─────────────────────────────────────────────
+# 화면 템플릿 (P3 시안 · P4 완성본 공통 검사)
+# 출처: Figma mPDVfKe7KWzEJTk4QwxmmB node 29:68 "B · 작업 데스크"
+# 값 옆 [임의] = 템플릿·design.md 에 없어서 하네스가 정한 값
+# ─────────────────────────────────────────────
+template:
+  frame_name_pattern: "^([A-C]) · \\S.*$" # "<시안 문자> · <화면명>"
+  # {p} = 시안 문자 소문자 (A → a). 접두사 = 시안 문자 [임의: 템플릿은 추정만 가능]
+  layer_name_pattern: "^{p}\\.[a-z0-9][a-z0-9.-]*$"
+  system_instances: ["Status bar - iPhone 17 Pro"] # 이름 규칙·색·서체 검사 제외
+  status_bar: { y: 0, height: 62 }
+  regions: # 레이어 이름 {p}.<키> — 모든 화면 필수
+    header: { y: 62, height: 56 }
+    tabs: { y: 748, height: 62 } # 탭바 필수 [임의: 템플릿은 1화면뿐]
+    home-indicator: { y: 810, height: 34 } # 레이어 이름 [임의: 템플릿은 "Frame"]
+  scroll_region: scroll # {p}.scroll 아래 끝 ≤ tabs.y [임의: 템플릿은 18px 겹침]
+  body: { name: body, side_padding: 16 } # {p}.body 좌우 padding
+  sizes: { tap_min: 44, button: 48, header: 56, nav: 62 }
+  interactive_suffixes: [".cta", ".btn"] # 버튼 판별 방식 [임의]
+  tab_item_pattern: "^{p}\\.tab\\d+$"
+  cta_suffix: ".cta"
+  cta_forbidden_fills: ["#0066ff"] # design.md: accent 는 CTA 에 쓰지 않는다
+
+# ─────────────────────────────────────────────
+# ★ 어기면 안 되는 것 2 — 개인정보·고객정보·회사기밀 금지 (P4 Figma 텍스트 + P4 문서)
+# ─────────────────────────────────────────────
+privacy:
+  patterns:
+    email: "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"
+    phone_kr: "01[016789][-.\\s]?\\d{3,4}[-.\\s]?\\d{4}"
+    landline_kr: "0[2-6][0-9]?[-.\\s]?\\d{3,4}[-.\\s]?\\d{4}"
+    rrn: "\\d{6}[-\\s]?[1-4]\\d{6}"
+  banned_keywords: [대외비, 사내 기밀, confidential, 고객명단]

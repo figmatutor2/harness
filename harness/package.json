@@ -1,0 +1,11 @@
+{
+  "name": "huddling-design-harness",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "verify": "node scripts/verify.mjs"
+  },
+  "dependencies": {
+    "yaml": "^2.5.0"
+  }
+}
