@@ -50,7 +50,7 @@ description: "허들링 디자인 하네스 실행(오케스트레이터). 화�
 
 작업 에이전트를 부를 때 전달할 것:
 
-- `slug`, 화면 주제, Figma 파일 링크(P3·P4)
+- `slug`, 화면 주제, Figma 파일 링크(P3·P4·P5)
 - 복귀로 다시 부르는 경우: `state.json` history의 **마지막 실패 사유** (P5는 `p5-flow/verify-report.md`도)
 - "파일은 직접 쓰지 말고 `=== FILE: runs/<slug>/<phase 폴더>/<파일명> ===` 블록으로 반환할 것"
 

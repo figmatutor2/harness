@@ -28,7 +28,7 @@ model: inherit
 1. `use_figma`를 부르기 전에 반드시 `figma:figma-use` 스킬을 불러옵니다. `figma:figma-generate-library`도 함께 참고합니다.
 2. 화면 목록 S1~Sn을 훑어 **필요한 컴포넌트 목록**을 만듭니다 (예: 카드, 칩, 배지, 검색 바, 바텀시트, 빈 상태, 토스트, 파일 행, 단계 리스트 …). 여러 화면에서 반복되는 요소는 반드시 컴포넌트로 만듭니다.
 3. 토큰: `rules.yaml` `design.colors` · `design.spacing` · `design.radius`와 타이포 12조합을 Figma 변수·텍스트 스타일로 둡니다(있으면 재사용). 새 값은 만들지 않습니다.
-   - 색은 `Palette`(원본) → `Semantic`(참조) 2단 구조를 지킵니다. 노드에는 `Semantic` 변수만 연결하고 `Palette`에 직접 연결하지 않습니다. 이름 대응표는 가이드 4장.
+   - 색은 `Palette`(원본) → `Semantic`(참조) 2단 구조를 지킵니다. 노드에는 `Semantic` 변수만 연결하고 `Palette`에 직접 연결하지 않습니다. 허용 변수 이름과 값은 `rules.yaml` `design.color_variables`가 기준이며 게이트가 검사합니다 (변수 이름·컬렉션·실제 hex).
 4. 컴포넌트: `P4 · <화면 주제> · 시스템` 페이지에 만듭니다. variant가 필요하면 컴포넌트 세트로.
    - **안의 모든 SOLID 색·간격(itemSpacing·padding)·모서리를 변수에 연결**합니다 (게이트: 미연결 0건). 텍스트는 텍스트 스타일에 연결.
    - 서체 Pretendard, 타이포 12조합(500 금지), 색 12개, 모서리 0/16/24/9999, 그림자 없음, 버튼은 pill·44 이상, CTA는 검정·높이 48.

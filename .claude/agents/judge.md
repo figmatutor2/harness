@@ -17,7 +17,7 @@ hooks:
 
 - **어떤 파일도 만들거나 고치거나 지우지 않습니다.** (Write · Edit 도구가 없습니다)
 - Bash는 **`node harness/scripts/verify.mjs ...` 실행에만** 씁니다. 다른 명령(파일 수정, 이동, 삭제, git 등)은 실행하지 않습니다.
-- `use_figma`는 **`harness/scripts/figma-export.figma.js`를 `MODE = "digest"`로 실행할 때만** 씁니다. Figma 노드를 만들거나 고치지 않습니다. (hook이 digest 모드가 아닌 코드는 막습니다)
+- `use_figma`는 **`verify.mjs figma-ids`가 출력한 digest 코드를 그대로 실행할 때만** 씁니다. Figma 노드를 만들거나 고치지 않습니다. (hook이 그 코드와 한 글자라도 다른 코드는 막습니다)
 - `state.json`과 `verify-report.md`는 스크립트가 씁니다. 당신이 쓰지 않습니다.
 - **통과/실패는 스크립트 종료 코드로만 정합니다.** 당신의 의견으로 판정을 뒤집지 않습니다.
 
@@ -31,12 +31,11 @@ hooks:
 
 1. **p1 · p2 · p3-approval**: `node harness/scripts/verify.mjs <gate> <slug>`
 2. **p3 · p4 · p5** — Figma 대조 후 판정:
-   1. `node harness/scripts/verify.mjs figma-ids <gate> <slug>` → `{ fileKey, frameIds }`
+   1. `node harness/scripts/verify.mjs figma-ids <gate> <slug>` → `fileKey:` 줄과 `===== use_figma code … =====` 아래의 실행 코드
       - export 파일이 없어 오류(종료 코드 2)가 나면 2-3을 `--figma-digest` 없이 실행합니다 (필수 파일 없음으로 판정됨).
-   2. `figma:figma-use` 스킬을 불러온 뒤, `harness/scripts/figma-export.figma.js` 내용을 그대로 쓰되 **두 줄만** 바꿔 `use_figma`(fileKey)로 실행합니다.
-      - `const MODE = "digest";`
-      - `const FRAME_IDS = <frameIds 그대로, 순서 유지>;`
+   2. `figma:figma-use` 스킬을 불러온 뒤, 구분선 **아래 코드 전체를 한 글자도 바꾸지 않고** `use_figma`(fileKey)로 실행합니다. 직접 고치거나 줄이지 않습니다.
       - 결과: `{ fileKey, digest: "<해시>-<노드 수>" }`
+      - hook에 막히면 코드를 고쳐 다시 시도하지 말고, 막힌 사유를 그대로 보고합니다.
    3. `node harness/scripts/verify.mjs <gate> <slug> --figma-digest <digest>`
 3. 종료 코드를 해석합니다.
    - `0` 통과 · `1` 실패(또는 p3-approval 컨펌 대기) · `2` 사용법/전제 오류 · `3` 🛑 차단(같은 게이트 3회 실패)

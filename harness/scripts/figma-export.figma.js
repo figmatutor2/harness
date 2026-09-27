@@ -36,6 +36,32 @@ function solidPaints(paints) {
     .map((p) => toHex(p.color));
 }
 
+// 색 페인트에 연결된 변수 → "컬렉션:변수이름" (연결 없으면 null). 순서는 solidPaints 와 같다.
+// verify.mjs 가 rules.yaml design.color_variables 로 검사한다 (Semantic 변수만 허용).
+const varCache = new Map();
+async function varLabel(id) {
+  if (!varCache.has(id)) {
+    const v = await figma.variables.getVariableByIdAsync(id);
+    const c = v
+      ? await figma.variables.getVariableCollectionByIdAsync(
+          v.variableCollectionId,
+        )
+      : null;
+    varCache.set(id, v ? `${c ? c.name : "?"}:${v.name}` : "?:?");
+  }
+  return varCache.get(id);
+}
+async function solidVars(paints) {
+  if (!paints || paints === figma.mixed) return [];
+  const out = [];
+  for (const p of paints) {
+    if (p.visible === false || p.type !== "SOLID") continue;
+    const alias = p.boundVariables && p.boundVariables.color;
+    out.push(alias ? await varLabel(alias.id) : null);
+  }
+  return out;
+}
+
 function radiusOf(node) {
   if (!("cornerRadius" in node)) return undefined;
   const r =
@@ -123,8 +149,14 @@ async function walk(node, origin, out) {
     }
   }
 
-  if ("fills" in node) o.fills = solidPaints(node.fills);
-  if ("strokes" in node) o.strokes = solidPaints(node.strokes);
+  if ("fills" in node) {
+    o.fills = solidPaints(node.fills);
+    o.fillVars = await solidVars(node.fills);
+  }
+  if ("strokes" in node) {
+    o.strokes = solidPaints(node.strokes);
+    o.strokeVars = await solidVars(node.strokes);
+  }
   if ("effects" in node)
     o.effects = node.effects
       .filter((e) => e.visible !== false)
@@ -143,8 +175,17 @@ async function walk(node, origin, out) {
     o.fontFamilies = [...new Set(seg.map((s) => s.fontName.family))];
     o.fontSizes = [...new Set(seg.map((s) => s.fontSize))];
     o.fontWeights = [...new Set(seg.map((s) => s.fontWeight))];
-    if (node.fills === figma.mixed)
-      o.fills = [...new Set(seg.flatMap((s) => solidPaints(s.fills)))];
+    if (node.fills === figma.mixed) {
+      // 글자 구간마다 색이 다르면 [색, 변수] 쌍으로 모아 중복만 없앤다
+      const pairs = new Map();
+      for (const s of seg) {
+        const hex = solidPaints(s.fills);
+        const vars = await solidVars(s.fills);
+        hex.forEach((h, i) => pairs.set(`${h}|${vars[i]}`, [h, vars[i]]));
+      }
+      o.fills = [...pairs.values()].map(([h]) => h);
+      o.fillVars = [...pairs.values()].map(([, v]) => v);
+    }
   }
 
   if ("layoutMode" in node && node.layoutMode !== "NONE") {

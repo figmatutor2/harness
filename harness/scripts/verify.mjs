@@ -666,9 +666,61 @@ function checkP3Approval(dir, slug, state) {
   return { failures };
 }
 
+// 색 변수 검사 (rules.yaml design.color_variables) — 모든 SOLID fill·stroke 가 허용된 Semantic 변수에
+// 연결되어 있고, 칠해진 hex 가 그 역할의 colors hex 와 같은지. 시스템 인스턴스는 제외.
+function colorVarTally(frames) {
+  const cv = RULES.design.color_variables;
+  const roleOf = new Map(
+    Object.entries(cv.semantic).map(([role, name]) => [name, role]),
+  );
+  const out = [];
+  let legacy = 0;
+  for (const f of frames)
+    for (const n of f.nodes ?? []) {
+      if (n.system) continue;
+      const at = `"${n.name}"(${n.id})`;
+      for (const [kind, hexes, vars] of [
+        ["fills", n.fills ?? [], n.fillVars],
+        ["strokes", n.strokes ?? [], n.strokeVars],
+      ]) {
+        if (!hexes.length) continue;
+        if (!Array.isArray(vars)) {
+          legacy++;
+          continue;
+        }
+        hexes.forEach((hex, i) => {
+          const v = vars[i];
+          if (!v) return out.push(`${at}: ${kind} ${hex} 변수 미연결`);
+          const [col, ...rest] = String(v).split(":");
+          const name = rest.join(":");
+          if (col !== cv.semantic_collection)
+            return out.push(
+              `${at}: ${kind} ${v} — ${cv.semantic_collection} 변수만 허용${col === cv.palette_collection ? " (Palette 직접 연결 금지)" : ""}`,
+            );
+          const role = roleOf.get(name);
+          if (!role)
+            return out.push(
+              `${at}: ${kind} ${v} — rules.yaml color_variables 에 없는 변수`,
+            );
+          const want = RULES.design.colors[role].toLowerCase();
+          if (String(hex).toLowerCase() !== want)
+            out.push(
+              `${at}: ${kind} ${v} 값 ${hex} — ${role} ${want} 이어야 함`,
+            );
+        });
+      }
+    }
+  if (legacy)
+    out.unshift(
+      `색 변수 정보 없는 노드 ${legacy}건 — 최신 figma-export.figma.js 로 다시 내보내세요`,
+    );
+  return out;
+}
+
 const DESIGN_LABELS = {
   font: `Pretendard 외 서체`,
   color: `허용 색상 외`,
+  colorVar: `색 Semantic 변수 연결 위반`,
   spacing: `허용 간격 외`,
   shadow: `그림자 효과`,
   privacy: `★ 개인정보·기밀 패턴`,
@@ -770,6 +822,8 @@ function checkP4(dir, slug, state, ctx) {
   tally.typography = [];
   tally.radius = [];
   tally.unbound = [];
+  const colorGate = RULES.design.color_variables.gates.includes("p4");
+  if (colorGate) tally.colorVar = colorVarTally(roots);
   for (const f of roots)
     for (const n of f.nodes ?? []) {
       if (n.system) continue;
@@ -783,8 +837,12 @@ function checkP4(dir, slug, state, ctx) {
       }
       for (const rv of n.radius ?? [])
         if (!radius.has(rv)) tally.radius.push(`${at}: 모서리 ${rv}`);
-      if (r.require_bound_variables && (n.unbound ?? []).length)
-        tally.unbound.push(`${at}: ${n.unbound.join(", ")}`);
+      // 색(fills·strokes)은 colorVar 검사가 맡는다 — 같은 위반을 두 번 세지 않음
+      const ub = (n.unbound ?? []).filter(
+        (k) => !(colorGate && (k === "fills" || k === "strokes")),
+      );
+      if (r.require_bound_variables && ub.length)
+        tally.unbound.push(`${at}: ${ub.join(", ")}`);
     }
   pushTally(
     tally,
@@ -845,6 +903,8 @@ function checkP5(dir, slug, state, ctx) {
     ...designTally(frames, dir, r.report_file, stats),
     ...checkStructure(frames, L),
   };
+  if (RULES.design.color_variables.gates.includes("p5"))
+    tally.colorVar = colorVarTally(frames);
   pushTally(
     tally,
     { coverage: "화면 목록 커버리지", ...DESIGN_LABELS, ...STRUCTURE_LABELS },
@@ -948,6 +1008,10 @@ function writeReport(slug, state, res) {
     row("허용 색상 외 (rules.yaml design.colors)", "color"),
     row("허용 간격 외 (rules.yaml design.spacing)", "spacing"),
     row("그림자 효과", "shadow"),
+    row(
+      "색 Semantic 변수 연결 (rules.yaml design.color_variables)",
+      "colorVar",
+    ),
     row("★ 개인정보·기밀 패턴", "privacy"),
     ...Object.entries(STRUCTURE_LABELS).map(([k, label]) => row(label, k)),
     "",
@@ -1099,7 +1163,9 @@ function cmdGate(gate, slug, args) {
   process.exit(1);
 }
 
-// judge 가 Figma 지문(use_figma MODE="digest")을 받을 때 쓸 fileKey 와 프레임 ID (export 순서 그대로)
+// judge 가 Figma 지문을 받을 때 그대로 실행할 코드와 fileKey 를 출력한다.
+// figma-export.figma.js 에서 MODE 줄과 FRAME_IDS 줄만 바꾼다 (프레임 ID 는 export 순서 그대로).
+// guard-judge-bash.mjs 는 이 두 줄 외에 한 글자라도 다른 use_figma 코드를 막는다.
 function cmdFigmaIds(gate, slug) {
   const fc = RULES.figma_check;
   if (!fc.gates.includes(gate))
@@ -1109,11 +1175,25 @@ function cmdFigmaIds(gate, slug) {
   const failures = [];
   const exp = readJson(file, failures, fc.export_files[gate]);
   if (!exp) usage(failures[0] ?? `${fc.export_files[gate]} 이 없어요`);
+  const ids = (exp.frames ?? []).map((f) => f.id);
+  const src = fs.readFileSync(
+    path.join(HARNESS_DIR, "scripts", "figma-export.figma.js"),
+    "utf8",
+  );
+  const modeRe = /^const MODE = "export";$/m;
+  const idsRe = /^const FRAME_IDS = .*$/m;
+  if (!modeRe.test(src) || !idsRe.test(src))
+    usage("figma-export.figma.js 에서 MODE / FRAME_IDS 줄을 찾지 못했어요");
+  const code = src
+    .replace(modeRe, 'const MODE = "digest";')
+    .replace(idsRe, `const FRAME_IDS = ${JSON.stringify(ids)};`);
   console.log(
-    JSON.stringify({
-      fileKey: fileKeyOf(s.figmaFileUrl),
-      frameIds: (exp.frames ?? []).map((f) => f.id),
-    }),
+    [
+      `fileKey: ${fileKeyOf(s.figmaFileUrl)}`,
+      `frames: ${ids.length}`,
+      "===== use_figma code — 아래 줄부터 끝까지 한 글자도 바꾸지 말고 그대로 실행 =====",
+      code.trimEnd(),
+    ].join("\n"),
   );
 }
 

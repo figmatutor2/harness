@@ -94,7 +94,11 @@ p3-approval:
   date_pattern: "날짜\\s*[:：]\\s*(\\d{4}-\\d{2}-\\d{2})"
   # 컨펌 잠금: 승인 시점의 이 파일들(+approval.md) 해시를 state.json 에 기록한다.
   # 승인 뒤 하나라도 바뀌면 그 컨펌은 무효 → approval.md 를 <stale_prefix>-<n>.md 로 보관하고 다시 컨펌을 기다린다.
-  lock_files: [p2-spec/screen-spec.md, p3-concept/concepts.md] # runs/<slug>/ 기준 경로
+  lock_files: [
+      p2-spec/screen-spec.md,
+      p3-concept/concepts.md,
+      p3-concept/concepts-export.json, # 시안 모양이 바뀌어도 무효
+    ] # runs/<slug>/ 기준 경로
   stale_prefix: approval-stale
   lock_check_gates: [p4, p5] # 이 게이트에서도 잠금이 유효한지 확인. 무효면 gates.return_to.approval_lock 으로
 
@@ -159,6 +163,27 @@ design:
     - [12, 400] # caption
   forbidden_weights: [500] # 템플릿은 Medium 500을 쓰지만 design.md 우선
   radius: [0, 16, 24, 9999] # design.md rounded.none / sm / md / full
+
+  # 색 변수 2단 구조 (Palette 원본 hex → Semantic 역할 이름). 가이드 4장 표의 기준은 이 목록이다.
+  # 검사 게이트의 모든 SOLID fill·stroke 는 아래 Semantic 변수 중 하나에 연결되어야 하고,
+  # 그 변수의 실제 값(노드에 칠해진 hex)은 colors 의 같은 역할 hex 와 같아야 한다.
+  color_variables:
+    gates: [p4, p5]
+    semantic_collection: Semantic
+    palette_collection: Palette # 노드에 직접 연결 금지
+    semantic: # colors 키 → Figma Semantic 변수 이름
+      primary: Primary/Normal
+      accent: Accent/Blue
+      ink: Label/Normal
+      ink-soft: Label/Neutral
+      text-muted: Label/Alternative
+      text-faint: Label/Assistive
+      on-primary: Inverse/Label
+      canvas: Background/Normal/Normal
+      canvas-soft: Background/Normal/Alternative
+      field: Fill/Normal
+      hairline-soft: Line/Normal/Alternative
+      hairline: Line/Normal/Normal
 
 # ─────────────────────────────────────────────
 # 화면 템플릿 (P3 시안 · P5 플로우 화면 공통 검사)
