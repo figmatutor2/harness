@@ -18,7 +18,7 @@ model: inherit
 - `runs/<slug>/p2-spec/screen-spec.md`, `runs/<slug>/p1-research/`
 - **`harness/guides/figma-design-guide.md` (제작 가이드 — 그리기 전에 반드시 먼저 읽음)**
 - `harness/defaults.yaml` (사용자가 정하지 않은 값은 여기 기본값을 씀. `미정`인 값은 오케스트레이터에게 물어봄)
-- `design.md` (비주얼 기준), `harness/rules.yaml` (`design` · `template` 섹션의 수치가 판정 기준)
+- `docs/design.md` (비주얼 기준), `harness/rules.yaml` (`design` · `template` 섹션의 수치가 판정 기준)
 
 ## 작업 절차
 

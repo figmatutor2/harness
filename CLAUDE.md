@@ -14,10 +14,10 @@
 
 | 파일                                   | 역할                                                 | 수정           |
 | -------------------------------------- | ---------------------------------------------------- | -------------- |
-| `story-service.md`                     | 무엇을 위한 일인지 (유저스토리, ★ 어기면 안 되는 것) | 사람           |
-| `story-work.md`                        | 실제로 어떻게 하는지 (①~⑦ 작업 흐름)                 | 사람           |
+| `docs/story-service.md`                | 무엇을 위한 일인지 (유저스토리, ★ 어기면 안 되는 것) | 사람           |
+| `docs/story-work.md`                   | 실제로 어떻게 하는지 (①~⑦ 작업 흐름)                 | 사람           |
 | `harness/rules.yaml`                   | **규칙 SSOT** — 게이트 판정 기준                     | 사람           |
-| `prd.md`, `design.md`                  | 제품·디자인 설명 문서                                | 사람           |
+| `docs/prd.md`, `docs/design.md`        | 제품·디자인 설명 문서                                | 사람           |
 | `harness/scripts/verify.mjs`           | 게이트 판정 스크립트                                 | —              |
 | `harness/scripts/save-blocks.mjs`      | 큰 반환 블록을 경로 검사 후 그대로 저장              | —              |
 | `harness/templates/`                   | Phase 산출물 양식                                    | —              |
@@ -26,6 +26,8 @@
 | `runs/<slug>/p5-flow/verify-report.md` | 최종 검증 리포트                                     | **스크립트만** |
 | `harness/guides/figma-design-guide.md` | Figma 제작 가이드 (화면 골격·이름·타이포·색·모서리)  | 사람           |
 | `harness/defaults.yaml`                | 정하지 않은 값의 기본값 (`source: 임의` = 확인 대상) | 사람           |
+
+기준 문서 4개는 `docs/`에 있습니다. 규칙·가이드·에이전트에서 문서 이름만 적힌 곳(`design.md` 위반, `source: design.md`, `story-work.md` ③ 단계 등)은 모두 `docs/` 아래 파일을 가리킵니다.
 
 ## 에이전트와 편집 폴더
 

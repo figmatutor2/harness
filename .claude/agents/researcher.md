@@ -17,7 +17,7 @@ model: inherit
 
 - 오케스트레이터가 알려준 `slug`, `화면 주제`
 - 복귀로 다시 호출된 경우: 직전 실패 사유 (`state.json` history의 마지막 실패, 또는 `p2-spec/needs-research.md`)
-- 참고 문서: `prd.md`, `story-service.md`
+- 참고 문서: `docs/prd.md`, `docs/story-service.md`
 
 ## 작업 절차
 

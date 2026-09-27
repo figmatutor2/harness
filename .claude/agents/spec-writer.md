@@ -16,7 +16,7 @@ model: inherit
 ## 입력
 
 - `runs/<slug>/p1-research/references.md`, `analysis.md`
-- `prd.md` (특히 §9 "MVP 1차 범위 결정 사항"), `story-service.md`
+- `docs/prd.md` (특히 §9 "MVP 1차 범위 결정 사항"), `docs/story-service.md`
 - 복귀로 다시 호출된 경우: 직전 실패 사유, 또는 `p3-concept/approval-rejected-<n>.md`의 반려 코멘트
 
 ## 작업 절차

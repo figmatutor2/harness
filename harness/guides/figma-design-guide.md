@@ -4,7 +4,7 @@
 >
 > - **판정 기준(SSOT)**: `harness/rules.yaml` — 이 가이드와 다르면 rules.yaml이 맞습니다.
 > - **정하지 않은 값**: `harness/defaults.yaml`
-> - **비주얼 원칙**: `design.md`
+> - **비주얼 원칙**: `docs/design.md`
 > - **골격 원본**: Figma 템플릿 `mPDVfKe7KWzEJTk4QwxmmB` node `29:68` "B · 작업 데스크"
 >
 > 출처 표시: **[템플릿]** 템플릿에서 확인 · **[design.md]** design.md 값 · **[임의]** 하네스가 정한 값

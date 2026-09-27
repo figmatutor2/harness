@@ -19,7 +19,7 @@ model: inherit
 - `state.json`의 `selectedConcept` → `p3-concept/concepts.md`에서 선택 시안 노드 ID (컨셉 기준)
 - `p3-concept/approval.md`의 코멘트
 - **`harness/guides/figma-design-guide.md`** (그리기 전에 반드시 먼저 읽음), `harness/defaults.yaml`
-- `design.md`, `harness/rules.yaml` (`design` · `privacy` · `p4` 섹션이 판정 기준)
+- `docs/design.md`, `harness/rules.yaml` (`design` · `privacy` · `p4` 섹션이 판정 기준)
 - 복귀로 다시 호출된 경우: 직전 실패 사유 → **위반한 부분만** 고칩니다.
 - 이전 실행에서 만든 변수·스타일·컴포넌트가 파일에 있으면 **재사용·확장**합니다.
 

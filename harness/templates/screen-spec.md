@@ -1,6 +1,6 @@
 # 화면 설계 문서 — {{화면 주제}}
 
-> P2 · spec-writer 작성. 입력: p1-research/analysis.md, prd.md, story-service.md
+> P2 · spec-writer 작성. 입력: p1-research/analysis.md, docs/prd.md, docs/story-service.md
 > 규칙: 아래 `##` 섹션 6개(목적 · 연결 유저스토리 · 화면 목록 · 화면 구성 · 상태 · 데이터 필드) 제목을 바꾸지 마세요.
 > 화면 목록의 모든 화면이 P5에서 390×844 프레임으로 그려집니다 (프레임 이름 `<선택 시안> · <화면명>`).
 > MVP 범위 밖 기능(prd.md §9 "MVP 1차 범위 결정 사항")은 쓰지 않습니다.
