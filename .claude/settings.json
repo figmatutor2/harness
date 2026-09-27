@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/harness/scripts/guard-write.mjs\"",
+            "statusMessage": "하네스 저장 권한 확인"
+          }
+        ]
+      }
+    ]
+  }
+}

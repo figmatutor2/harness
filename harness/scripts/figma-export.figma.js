@@ -1,10 +1,17 @@
 // Figma 노드 정보 내보내기 — use_figma(Plugin API)로 실행하는 코드 본문
-// P3: concepts-export.json · P4: figma-export.json 을 만들 때 쓴다.
+// P3: concepts-export.json · P4: system-export.json · P5: flow-export.json 을 만들 때 쓴다.
 // 반드시 /figma-use 스킬을 먼저 불러온 뒤 use_figma 로 실행할 것.
 //
 // 사용법: 아래 FRAME_IDS 에 내보낼 최상위 프레임 노드 ID를 넣고 실행한다.
 // 반환된 JSON 을 그대로 해당 Phase 폴더의 파일로 저장한다. (값을 손으로 고치지 말 것)
+//
+// MODE
+//   "export" — 작업 에이전트용. 노드 정보 JSON 전체를 돌려준다.
+//   "digest" — judge 전용. 같은 순회 결과를 지문 한 줄("<해시>-<노드 수>")로만 돌려준다.
+//              FRAME_IDS 는 `verify.mjs figma-ids <gate> <slug>` 출력 순서 그대로 넣는다.
+//              digest 모드는 노드를 읽기만 한다 (judge 의 use_figma 는 이 모드만 허용됨).
 
+const MODE = "export";
 const FRAME_IDS = ["__FRAME_ID__"]; // 예: ["123:456", "123:789"]
 
 // harness/rules.yaml template.system_instances 와 같게 유지한다.
@@ -52,6 +59,42 @@ function box(node, origin) {
     width: Math.round(b.width),
     height: Math.round(b.height),
   };
+}
+
+// 값이 있는데 Figma 변수에 연결되지 않은 속성 목록 (P4 게이트: 변수 미연결 0건)
+function unboundProps(node, o) {
+  const bv = node.boundVariables || {};
+  const out = [];
+  if (
+    (o.fills || []).length &&
+    node.fills !== figma.mixed &&
+    !(bv.fills && bv.fills.length)
+  )
+    out.push("fills");
+  if ((o.strokes || []).length && !(bv.strokes && bv.strokes.length))
+    out.push("strokes");
+  if (
+    typeof o.itemSpacing === "number" &&
+    o.itemSpacing !== 0 &&
+    !bv.itemSpacing
+  )
+    out.push("itemSpacing");
+  for (const k of [
+    "paddingTop",
+    "paddingRight",
+    "paddingBottom",
+    "paddingLeft",
+  ])
+    if (typeof node[k] === "number" && node[k] !== 0 && !bv[k]) out.push(k);
+  const rk = [
+    "topLeftRadius",
+    "topRightRadius",
+    "bottomRightRadius",
+    "bottomLeftRadius",
+  ];
+  if ((o.radius || []).length && !rk.some((k) => bv[k]) && !bv.cornerRadius)
+    out.push("radius");
+  return out;
 }
 
 async function walk(node, origin, out) {
@@ -113,6 +156,8 @@ async function walk(node, origin, out) {
       node.paddingLeft,
     ];
   }
+  const ub = unboundProps(node, o);
+  if (ub.length) o.unbound = ub;
   out.push(o);
   if ("children" in node)
     for (const child of node.children) await walk(child, origin, out);
@@ -128,10 +173,35 @@ for (const id of FRAME_IDS) {
   frames.push({
     id: frame.id,
     name: frame.name,
+    type: frame.type,
     width: frame.width,
     height: frame.height,
     nodes,
   });
+}
+
+// cyrb53 — harness/scripts/verify.mjs 의 같은 함수와 글자까지 같아야 한다
+function cyrb53(str, seed = 0) {
+  let h1 = 0xdeadbeef ^ seed;
+  let h2 = 0x41c6ce57 ^ seed;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+  h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+  h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0))
+    .toString(16)
+    .padStart(14, "0");
+}
+
+if (MODE === "digest") {
+  const count = frames.reduce((a, f) => a + f.nodes.length, 0);
+  const hash = cyrb53(figma.fileKey + "\n" + JSON.stringify(frames));
+  return { fileKey: figma.fileKey, digest: `${hash}-${count}` };
 }
 
 return { fileKey: figma.fileKey, exportedAt: new Date().toISOString(), frames };

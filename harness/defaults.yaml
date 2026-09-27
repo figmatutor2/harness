@@ -11,8 +11,10 @@
 figma:
   pages:
     p3: { value: "P3 · {주제} · 시안", source: 임의 }
-    p4: { value: "P4 · {주제} · 완성본", source: 임의 }
-  frame_name: { value: "{시안 문자} · {화면명}", source: template } # 예: B · 작업 데스크
+    p4: { value: "P4 · {주제} · 시스템", source: 임의 } # 토큰·컴포넌트
+    p5: { value: "P5 · {주제} · 플로우", source: 임의 } # 화면 목록 전체
+  frame_name: { value: "{시안 문자} · {화면명}", source: template } # 예: B · 작업 데스크 / P5 플로우 화면도 같은 규칙 (A · 카드 상세)
+  flow_layout: { value: "S1 → Sn 순서로 가로 배치, 간격 80", source: 임의 }
   frame_gap_x: { value: 80, source: 임의 } # 시안 프레임을 가로로 나란히 둘 때 간격
   layer_prefix: { value: "{시안 문자 소문자}.", source: template } # 예: b.header (접두사=시안 문자는 추정 → 임의 확정)
 

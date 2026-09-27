@@ -16,14 +16,16 @@ run:
 
 # 게이트 순서와 실패 시 복귀 경로 (R2·R4 확정)
 gates:
-  order: [p1, p2, p3, p3-approval, p4]
+  order: [p1, p2, p3, p3-approval, p4, p5]
   return_to:
     p1: p1
     p2: p2 # 기본
     p2_needs_research: p1 # p2-spec/needs-research.md 가 있으면 P1로
     p3: p3
     p3-approval: p2 # 내부 컨펌 반려
+    approval_lock: p3-approval # P4·P5 에서 컨펌 잠금이 무효(설계·시안 변경, 기록 없음)일 때
     p4: p4
+    p5: p5
 
 # ─────────────────────────────────────────────
 # Phase별 필수 파일과 통과 조건
@@ -42,10 +44,26 @@ p2:
   dir: p2-spec
   files: [screen-spec.md]
   needs_research_file: needs-research.md
-  required_sections: [목적, 연결 유저스토리, 화면 구성, 상태, 데이터 필드]
+  required_sections:
+    [목적, 연결 유저스토리, 화면 목록, 화면 구성, 상태, 데이터 필드]
   story_id_pattern: "\\bUS-(\\d+)\\b"
   story_id_range: [1, 5] # story-service.md 유저스토리 번호
   excluded_keywords: [구매, 피드백, 허들링 픽, 판매 수익, 정산, 결제] # MVP 범위 제외
+
+  # 화면 목록: | S1 | 화면명 | 키스크린 | 진입 경로 | 주요 컴포넌트 |
+  screen_list:
+    section: 화면 목록
+    row_pattern: "^\\|\\s*S(\\d+)\\s*\\|\\s*([^|]+?)\\s*\\|\\s*([^|]+?)\\s*\\|"
+    key_label: 키스크린
+    min_screens: 2 # 키스크린 1 + 플로우 1 이상 [임의]
+    key_screens: 1 # 키스크린은 정확히 1개 [임의]
+
+  # ★ 검사를 켜는 위치 (Q4): 실제 항목이 적히는 칸에서만 키워드를 찾는다.
+  #   "없다/아님" 설명 문장(표의 규칙 열, 본문 bullet)은 검사를 켜지 않는다.
+  trigger_scopes:
+    - { section: 데이터 필드, columns: [1, 2] } # 필드 · 표시 이름
+    - { section: 화면 구성, columns: [2] } # 구성 요소
+    - { section: 상태, lines: true } # 상태 목록 전체
 
   # ★ 어기면 안 되는 것 1 — 멤버 자료는 기본 비공개
   visibility:
@@ -74,11 +92,33 @@ p3-approval:
   selected_pattern: "선택 시안\\s*[:：]\\s*시안\\s*([A-Z])"
   approver_pattern: "승인자\\s*[:：]\\s*(\\S.*)"
   date_pattern: "날짜\\s*[:：]\\s*(\\d{4}-\\d{2}-\\d{2})"
+  # 컨펌 잠금: 승인 시점의 이 파일들(+approval.md) 해시를 state.json 에 기록한다.
+  # 승인 뒤 하나라도 바뀌면 그 컨펌은 무효 → approval.md 를 <stale_prefix>-<n>.md 로 보관하고 다시 컨펌을 기다린다.
+  lock_files: [p2-spec/screen-spec.md, p3-concept/concepts.md] # runs/<slug>/ 기준 경로
+  stale_prefix: approval-stale
+  lock_check_gates: [p4, p5] # 이 게이트에서도 잠금이 유효한지 확인. 무효면 gates.return_to.approval_lock 으로
 
+# P4 시스템 확장: 화면 목록 전체에 필요한 컴포넌트·토큰
 p4:
-  dir: p4-build
-  files: [build.md, figma-export.json]
+  dir: p4-system
+  files: [system.md, system-export.json]
+  component_heading: "^###\\s+C(\\d+)\\.\\s+(.+?)\\s*$" # ### C1. Skill card
+  min_components: 1
+  require_bound_variables: true # 컴포넌트 안 SOLID 색·간격·모서리는 변수에 연결 [임의: 가이드 4장을 기계 검사로]
+
+# P5 유저 플로우 화면: 화면 목록 S1~Sn 전체를 390×844 로
+p5:
+  dir: p5-flow
+  files: [flow.md, flow-export.json]
   report_file: verify-report.md
+
+# Figma 실제 상태 대조: judge 가 figma-export.figma.js 를 MODE="digest" 로 실행한 지문(--figma-digest)과
+# export JSON 으로 계산한 지문이 같아야 통과한다. export 파일이 있는데 지문이 없으면 종료 코드 2.
+figma_check:
+  gates: [p3, p4, p5]
+  export_files:
+    { p3: concepts-export.json, p4: system-export.json, p5: flow-export.json }
+  digest_pattern: "^[0-9a-f]{14}-\\d+$" # <cyrb53 해시 14자리>-<노드 수>
 
 # ─────────────────────────────────────────────
 # 디자인 기준 (design.md 에서 옮겨 온 수치)
@@ -121,7 +161,7 @@ design:
   radius: [0, 16, 24, 9999] # design.md rounded.none / sm / md / full
 
 # ─────────────────────────────────────────────
-# 화면 템플릿 (P3 시안 · P4 완성본 공통 검사)
+# 화면 템플릿 (P3 시안 · P5 플로우 화면 공통 검사)
 # 출처: Figma mPDVfKe7KWzEJTk4QwxmmB node 29:68 "B · 작업 데스크"
 # 값 옆 [임의] = 템플릿·design.md 에 없어서 하네스가 정한 값
 # ─────────────────────────────────────────────
