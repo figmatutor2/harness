@@ -10,6 +10,16 @@
             "statusMessage": "하네스 저장 권한 확인"
           }
         ]
+      },
+      {
+        "matcher": "Agent|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/harness/scripts/guard-review.mjs\"",
+            "statusMessage": "하네스 사용자 확인 대기 여부 확인"
+          }
+        ]
       }
     ]
   }

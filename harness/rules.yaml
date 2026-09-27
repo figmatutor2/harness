@@ -26,6 +26,10 @@ gates:
     approval_lock: p3-approval # P4·P5 에서 컨펌 잠금이 무효(설계·시안 변경, 기록 없음)일 때
     p4: p4
     p5: p5
+  # 통과 뒤 사용자 확인을 받아야 다음 게이트로 가는 게이트.
+  # 통과 시 state.json 에 awaitingReview 가 기록되고, 'verify.mjs proceed <slug>' 전까지 다음 게이트 판정·작업 에이전트 호출이 막힌다.
+  # p3 는 approval.md 컨펌(p3-approval)이, p5 는 완료 보고가 확인 지점이라 넣지 않는다.
+  review_after: [p1, p2, p4]
 
 # ─────────────────────────────────────────────
 # Phase별 필수 파일과 통과 조건

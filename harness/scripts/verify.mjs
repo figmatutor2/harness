@@ -10,8 +10,9 @@
 //   node harness/scripts/verify.mjs status <slug>
 //   node harness/scripts/verify.mjs unblock <slug>        # 3회 실패 차단 해제 (사람이 실행)
 //   node harness/scripts/verify.mjs reopen <slug> --from <gate>  # 특정 게이트부터 다시 열기 (산출물 유지)
+//   node harness/scripts/verify.mjs proceed <slug>       # 사용자 확인 대기 해제 (사용자가 진행을 지시했을 때만)
 //
-// 종료 코드: 0 통과 · 1 실패 · 2 사용법/전제 오류 · 3 차단(같은 게이트 3회 실패)
+// 종료 코드: 0 통과 · 1 실패 · 2 사용법/전제 오류 · 3 차단(같은 게이트 3회 실패) · 4 사용자 확인 대기
 
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -38,7 +39,7 @@ const now = () => new Date().toISOString();
 function usage(msg) {
   if (msg) console.error(`⚠️  ${msg}`);
   console.error(
-    '사용법: verify.mjs init <slug> --topic "<주제>" --figma <URL> | <p1|p2|p3-approval> <slug> | <p3|p4|p5> <slug> --figma-digest <지문> | figma-ids <p3|p4|p5> <slug> | status <slug> | unblock <slug> | reopen <slug> --from <gate>',
+    '사용법: verify.mjs init <slug> --topic "<주제>" --figma <URL> | <p1|p2|p3-approval> <slug> | <p3|p4|p5> <slug> --figma-digest <지문> | figma-ids <p3|p4|p5> <slug> | status <slug> | unblock <slug> | reopen <slug> --from <gate> | proceed <slug>',
   );
   process.exit(2);
 }
@@ -946,6 +947,7 @@ function cmdInit(slug, args) {
     blockedGate: null,
     selectedConcept: null,
     approval: null, // 컨펌 잠금 기록 (p3-approval 통과 시 해시 저장)
+    awaitingReview: null, // 사용자 확인을 기다리는 게이트 (gates.review_after)
     done: false,
     history: [],
   };
@@ -968,11 +970,25 @@ function cmdStatus(slug) {
       s.blocked
         ? `🛑 차단됨: ${s.blockedGate} 게이트 ${RULES.run.max_attempts}회 실패 — 사람 확인 후 unblock 필요`
         : "",
+      s.awaitingReview
+        ? `👀 확인 대기: ${s.awaitingReview} 산출물 — 사용자 확인 후 proceed 필요`
+        : "",
     ]
       .filter(Boolean)
       .join("\n"),
   );
-  process.exit(s.blocked ? 3 : 0);
+  process.exit(s.blocked ? 3 : s.awaitingReview ? 4 : 0);
+}
+
+function cmdProceed(slug) {
+  const s = loadState(slug);
+  if (!s.awaitingReview) usage("사용자 확인 대기 상태가 아니에요.");
+  s.history.push({ gate: s.awaitingReview, result: "reviewed", at: now() });
+  console.log(
+    `▶️  확인 완료: ${s.awaitingReview} → 다음: ${s.done ? "완료" : s.next}`,
+  );
+  s.awaitingReview = null;
+  saveState(slug, s);
 }
 
 function cmdUnblock(slug) {
@@ -1049,6 +1065,12 @@ function cmdGate(gate, slug, args) {
     process.exit(3);
   }
   if (s.done) usage("이미 완료된 실행이에요.");
+  if (s.awaitingReview) {
+    console.error(
+      `👀 ${s.awaitingReview} 산출물이 사용자 확인 대기 중이에요. 사용자가 진행을 지시한 뒤 'proceed ${slug}' 하세요.`,
+    );
+    process.exit(4);
+  }
   if (s.next !== gate)
     usage(`지금 판정할 게이트는 ${s.next}예요 (요청: ${gate})`);
 
@@ -1120,10 +1142,16 @@ function cmdGate(gate, slug, args) {
     if (gate === "p1") archiveNeedsResearch(slug);
     if (gate === "p3-approval") s.approval = { ...lockHashes(slug), at: now() }; // 컨펌 잠금
     if (gate === "p5") writeReport(slug, s, res);
+    const review = (RULES.gates.review_after ?? []).includes(gate);
+    if (review) s.awaitingReview = gate;
     saveState(slug, s);
     console.log(
       `✅ ${gate} 통과 → ${s.done ? "완료! verify-report.md 를 확인하세요" : `다음: ${s.next}`}`,
     );
+    if (review)
+      console.log(
+        `👀 사용자 확인 대기 — 산출물을 보여드리고 진행 지시를 받은 뒤 'proceed ${slug}' 하세요.`,
+      );
     process.exit(0);
   }
 
@@ -1213,6 +1241,7 @@ function cmdReopen(slug, args) {
   s.done = false;
   s.blocked = false;
   s.blockedGate = null;
+  s.awaitingReview = null; // 다시 연 게이트를 통과하면 새로 확인받는다
   s.history.push({ gate: from, result: "reopened", at: now() });
   saveState(slug, s);
   console.log(`🔁 다시 열림: runs/${slug} → 다음 게이트 ${from}`);
@@ -1226,6 +1255,7 @@ if (cmd === "init") cmdInit(slug, rest);
 else if (cmd === "status") cmdStatus(slug);
 else if (cmd === "unblock") cmdUnblock(slug);
 else if (cmd === "reopen") cmdReopen(slug, rest);
+else if (cmd === "proceed") cmdProceed(slug);
 else if (cmd === "figma-ids")
   cmdFigmaIds(slug, rest[0]); // figma-ids <gate> <slug>
 else if (GATES.includes(cmd)) cmdGate(cmd, slug, rest);
